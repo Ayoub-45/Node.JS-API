@@ -1,18 +1,17 @@
-import 'dotenv/config';
+export const getEnv = (name, defaultValue = undefined) => {
+  const value = process.env[name] ?? defaultValue;
 
-const requiredEnv = [
-  'PORT',
-  'DATABASE_URL'
-];
-
-for (const name of requiredEnv) {
-  if (!process.env[name]) {
+  if (value === undefined) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
-}
 
-export const config = {
-  port: Number(process.env.PORT),
-  databaseUrl: process.env.DATABASE_URL,
-  nodeEnv: process.env.NODE_ENV || 'development'
+  return value;
+};
+
+export const env = {
+  nodeEnv: process.env.NODE_ENV ?? 'development',
+
+  port: Number(getEnv('PORT', '3000')),
+
+  databaseUrl: getEnv('DATABASE_URL')
 };

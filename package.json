@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev":" node src/server.js"
+    "dev": "node src/server.js",
+    "migrate": "node src/db/migrate.js"
   },
   "repository": {
     "type": "git",
