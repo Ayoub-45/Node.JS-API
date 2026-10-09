@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import { pool } from '../db/pool.js';
-
+import { logger } from '../middleware/requestLogger.js';
 const router = Router();
 
 router.get('/', async (req, res, next) => {
   try {
+    logger.info(
+  {
+    operation: 'list_items'
+  },
+  'Fetching items'
+);
     const result = await pool.query(
       `
       SELECT id, name, description, created_at, updated_at
@@ -48,6 +54,12 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
+        logger.info(
+  {
+    operation: 'post_item'
+  },
+  'Posting items'
+);
     const { name, description } = req.body;
 
     if (!name) {

@@ -1,26 +1,57 @@
-import crypto from 'node:crypto';
+import pino from 'pino';
+import pinoHttp from 'pino-http';
+import crypto from 'crypto';
 
-export function requestLogger(req, res, next) {
-  const requestId =
-    req.headers['x-request-id'] || crypto.randomUUID();
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
 
-  req.requestId = requestId;
-  res.setHeader('x-request-id', requestId);
+  base: {
+    service: 'reliability-api'
+  },
 
-  const start = process.hrtime.bigint();
+  timestamp: pino.stdTimeFunctions.isoTime
+});
 
-  res.on('finish', () => {
-    const durationMs =
-      Number(process.hrtime.bigint() - start) / 1_000_000;
+const requestLogger = pinoHttp({
+  logger,
 
-    req.log.info({
-      requestId,
-      method: req.method,
-      path: req.originalUrl,
-      statusCode: res.statusCode,
-      durationMs: Number(durationMs.toFixed(2))
-    });
-  });
+  genReqId: (req, res) => {
+    const incomingId = req.headers['x-request-id'];
 
-  next();
-}
+    const requestId =
+      typeof incomingId === 'string' && incomingId.length > 0
+        ? incomingId
+        : crypto.randomUUID();
+
+    res.setHeader('X-Request-ID', requestId);
+
+    return requestId;
+  },
+
+  customLogLevel: (req, res, error) => {
+    if (error || res.statusCode >= 500) {
+      return 'error';
+    }
+
+    if (res.statusCode >= 400) {
+      return 'warn';
+    }
+
+    return 'info';
+  },
+
+  customSuccessMessage: (req, res) =>
+    `${req.method} ${req.url} completed`,
+
+  customErrorMesinfosage: (req, res, error) =>
+    `${req.method} ${req.url} failed`,
+
+  customProps: (req) => ({
+    requestId: req.id,
+    method: req.method,
+    path: req.url,
+    userAgent: req.headers['user-agent']
+  })
+});
+
+export { logger, requestLogger };
