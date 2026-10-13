@@ -1,16 +1,29 @@
 import express from 'express';
 import pinoHttp from 'pino-http';
 import healthRouter from './routes/health.js';
-import itemsRouter from './routes/items.js';
-import { errorHandler } from './middleware/errorHandler.js';
+import { createItemsRouter } from './routes/items.js';
+import { pool } from './db/pool.js';
+import { logger } from './middleware/requestLogger.js';import { errorHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import {
   register,
   httpMetricsMiddleware,
 } from './observability/metrics.js';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 const app = express();
-
 app.disable('x-powered-by');
+app.use(helmet());
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many requests. Please try again later.'
+  }
+});
+app.use(express.json({ limit: '100kb' }));
 app.use(express.json());
 
 app.use(
@@ -21,8 +34,11 @@ app.use(
 app.use(requestLogger)
 app.use(httpMetricsMiddleware);
 app.use('/health', healthRouter);
-app.use('/api/v1/items', itemsRouter);
-
+app.use(
+  '/api/v1/items',
+  apiLimiter,
+  createItemsRouter({ pool, logger })
+);
 app.get('/metrics', async (req, res, next) => {
   try {
     res.set('Content-Type', register.contentType);
