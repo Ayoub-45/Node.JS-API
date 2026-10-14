@@ -8,10 +8,6 @@
     "migrate": "node src/db/migrate.js",
     "test": "node --test"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Ayoub-45/Node.JS-API.git"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
