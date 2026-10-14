@@ -1,10 +1,10 @@
 
 import { config } from 'dotenv';
+config()
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import app from '../src/app.js';
-config()
 test('GET /health/live returns 200', async () => {
   const response = await request(app).get('/health/live');
 

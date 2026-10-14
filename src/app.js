@@ -1,3 +1,5 @@
+import { config } from 'dotenv';
+config()
 import express from 'express';
 import pinoHttp from 'pino-http';
 import healthRouter from './routes/health.js';
