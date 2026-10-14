@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+config()
 export const getEnv = (name, defaultValue = undefined) => {
   const value = process.env[name] ?? defaultValue;
 
