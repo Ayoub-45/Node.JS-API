@@ -49,25 +49,33 @@ The application is composed in `src/app.js`. The HTTP listener and process lifec
 
 ### Readiness and liveness
 
+These are two independent probes with different responsibilities:
+
+- **Liveness — `GET /health/live`:** verifies that the Node.js process can handle an HTTP request. It does not query PostgreSQL. If it responds, the endpoint returns `200` with `{ "status": "ok" }`.
+- **Readiness — `GET /health/ready`:** verifies that the instance can reach PostgreSQL by executing `SELECT 1`. A successful check returns `200` with database status `ok`; a failed query returns `503` with database status `unavailable`.
+
 ```mermaid
-flowchart TD
-    H[Health probe request]
-    Q{Endpoint}
-    LIVE[/health/live]
-    READY[/health/ready]
-    OK[Return HTTP 200]
-    DBQ[Execute SELECT 1]
-    DBOK{Database query succeeds?}
-    READYOK[Return 200 ready]
-    NOTREADY[Return 503 not_ready]
-    H --> Q
-    Q -->|live| LIVE --> OK
-    Q -->|ready| READY --> DBQ --> DBOK
-    DBOK -->|yes| READYOK
-    DBOK -->|no| NOTREADY
+flowchart TB
+    PROBE[Health probe]
+    PROBE --> LIVE_REQ[GET /health/live]
+    PROBE --> READY_REQ[GET /health/ready]
+
+    subgraph LIVENESS[Liveness — process health]
+      LIVE_REQ --> LIVE_HANDLER[Handle request in Node.js process]
+      LIVE_HANDLER --> LIVE_OK[HTTP 200<br/>status: ok]
+      NOTE[No database query]
+      LIVE_HANDLER -.-> NOTE
+    end
+
+    subgraph READINESS[Readiness — dependency availability]
+      READY_REQ --> READY_HANDLER[Run SELECT 1 using pg Pool]
+      READY_HANDLER --> DB_RESULT{Query successful?}
+      DB_RESULT -->|Yes| READY_OK[HTTP 200<br/>status: ready<br/>database: ok]
+      DB_RESULT -->|No| READY_FAIL[HTTP 503<br/>status: not_ready<br/>database: unavailable]
+    end
 ```
 
-Liveness deliberately does not depend on PostgreSQL. Readiness checks whether the API can reach its database, so an orchestrator or load balancer can distinguish a responsive process from one that cannot currently serve database-backed requests.
+A liveness failure indicates that the process is not responding and may need to be restarted by its orchestrator. A readiness failure indicates that this instance should temporarily stop receiving traffic; it does **not** necessarily mean the process should be restarted. For example, PostgreSQL may be temporarily unavailable while the Node.js process itself remains healthy.
 
 ### Item resource flow
 
